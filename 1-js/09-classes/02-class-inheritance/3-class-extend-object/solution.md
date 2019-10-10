@@ -1,14 +1,14 @@
-먼저, 해당 코드가 왜 작동하지 않는지 살펴봐야 합니다.
+First, let's see why the latter code doesn't work.
 
-이유는 코드를 실행한다면 명백해 보입니다. 상속받는 클래스는 `super()`를 반드시 호출해야 합니다. 그렇지 않으면 `"this"` 는 "정의"되지 않기 때문이죠.
+The reason becomes obvious if we try to run it. An inheriting class constructor must call `super()`. Otherwise `"this"` won't be "defined".
 
-아래 수정된 코드가 있습니다.
+So here's the fix:
 
 ```js run
 class Rabbit extends Object {
   constructor(name) {
 *!*
-    super(); // 상속할 때 부모의 생성자를 호출해야 합니다
+    super(); // need to call the parent constructor when inheriting
 */!*
     this.name = name;
   }
@@ -19,16 +19,16 @@ let rabbit = new Rabbit("Rab");
 alert( rabbit.hasOwnProperty('name') ); // true
 ```
 
-그런데 그게 전부는 아닙니다.
+But that's not all yet.
 
-위와 같이 수정한다고 해도, 여전히 `"class Rabbit extends Object"` 와 `class Rabbit` 사이에는 다른 점이 존재합니다.
+Even after the fix, there's still important difference in `"class Rabbit extends Object"` versus `class Rabbit`.
 
-이미 배웠듯이, "extends" 문법은 두개의 프로토타입을 설정합니다.
+As we know, the "extends" syntax sets up two prototypes:
 
-1. 생성자 함수들의 `"prototype"` 사이에 (메서드를 위한것).
-2. 생성자 함수 자신의 사이에 (정적인 메서드를 위한것).
+1. Between `"prototype"` of the constructor functions (for methods).
+2. Between the constructor functions themselves (for static methods).
 
-예제의 경우에는, `class Rabbit extends Object` 가 뜻하는 것은 아래와 같습니다.
+In our case, for `class Rabbit extends Object` it means:
 
 ```js run
 class Rabbit extends Object {}
@@ -37,45 +37,45 @@ alert( Rabbit.prototype.__proto__ === Object.prototype ); // (1) true
 alert( Rabbit.__proto__ === Object ); // (2) true
 ```
 
-그래서 `Rabbit` 이 `Object` 의 정적인 메서드에 `Rabbit` 을 통해서 접근할 수 있게 해야 합니다. 아래와 같이 말이죠.
+So `Rabbit` now provides access to static methods of `Object` via `Rabbit`, like this:
 
 ```js run
 class Rabbit extends Object {}
 
 *!*
-//  보통은 Object.getOwnPropertyNames 로 호출합니다
+// normally we call Object.getOwnPropertyNames
 alert ( Rabbit.getOwnPropertyNames({a: 1, b: 2})); // a,b
 */!*
 ```
 
-그러나 `extends Object` 가 없다면, `Rabbit.__proto__` 은 `Object` 로 설정되지 않습니다.
+But if we don't have `extends Object`, then `Rabbit.__proto__` is not set to `Object`.
 
-아래에 예시가 있습니다.
+Here's the demo:
 
 ```js run
 class Rabbit {}
 
-alert( Rabbit.prototype.__proto__ === Object.prototype ); // (1) true Rabbit의 프로토타입은 객체의 프로토타입 입니다.
-alert( Rabbit.__proto__ === Object ); // (2) false (!) Rabbit의 프로토타입은 객체가 아닙니다.
-alert( Rabbit.__proto__ === Function.prototype ); // 어떠한 함수든 기본으로 __proto__는 함수의 프로토타입 입니다.
+alert( Rabbit.prototype.__proto__ === Object.prototype ); // (1) true
+alert( Rabbit.__proto__ === Object ); // (2) false (!)
+alert( Rabbit.__proto__ === Function.prototype ); // as any function by default
 
 *!*
 // error, no such function in Rabbit
-alert ( Rabbit.getOwnPropertyNames({a: 1, b: 2})); // 에러
+alert ( Rabbit.getOwnPropertyNames({a: 1, b: 2})); // Error
 */!*
 ```
 
-그래서 `Rabbit` 은 `Object` 의 정적인 메서드에 접근을 할 수 없습니다.
+So `Rabbit` doesn't provide access to static methods of `Object` in that case.
 
-어쨋든 `Function.prototype` 은 `call`, `bind` 기타 등등의 "제네릭" 함수의 메서드를 가집니다. 제네릭 함수들은 궁극적으로 두 가지 경우에 모두 사용 가능 합니다. 왜냐하면, `Object`의 내장된 생성자는 `Object.__proto__ === Function.prototype` 이기 때문이죠.
+By the way, `Function.prototype` has "generic" function methods, like `call`, `bind` etc. They are ultimately available in both cases, because for the built-in `Object` constructor, `Object.__proto__ === Function.prototype`.
 
-이해를 돕기 위한 그림이 있습니다.
+Here's the picture:
 
 ![](rabbit-extends-object.svg)
 
-그래서, 짧게 요약하면 두 가지 다른 점이 있습니다.
+So, to put it short, there are two differences:
 
 | class Rabbit | class Rabbit extends Object  |
 |--------------|------------------------------|
-| --             | `super()`를 생성자에서 호출해야 한다 |
+| --             | needs to call `super()` in constructor |
 | `Rabbit.__proto__ === Function.prototype` | `Rabbit.__proto__ === Object` |
